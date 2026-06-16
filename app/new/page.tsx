@@ -34,6 +34,7 @@ export default function NewRequisitionPage() {
   const [jdText, setJdText] = useState("");
   const [advertText, setAdvertText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [rrfNumber, setRrfNumber] = useState("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([
     { name: "", email: "" },
     { name: "", email: "" },
@@ -89,6 +90,13 @@ export default function NewRequisitionPage() {
     setReviewers((prev) => prev.filter((_, idx) => idx !== i));
   }
 
+  const gap = (() => {
+  const b = parseFloat(approvedBudget);
+  const h = parseFloat(currentHeadcount);
+  if (isNaN(b) || isNaN(h)) return "—";
+  return String(b - h);
+})();
+
   return (
     <main className="container">
       <h1>New requisition</h1>
@@ -99,9 +107,9 @@ export default function NewRequisitionPage() {
             <div>
               <label>Vacancy arising due to *</label>
               <select
-                name="vacancyReason"
-                value={vacancyReason}
-                onChange={(e) => setVacancyReason(e.target.value)}
+                  name="vacancyReason"
+                  value={vacancyReason}
+                  onChange={(e) => setVacancyReason(e.target.value)}
               >
                 <option value="resignation">Resignation</option>
                 <option value="new_position">Budgeted new position</option>
@@ -110,55 +118,61 @@ export default function NewRequisitionPage() {
             <div>
               <label>Designation *</label>
               <input
-                name="designation"
-                value={designation}
-                onChange={(e) => setDesignation(e.target.value)}
-                required
+                  name="designation"
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  required
               />
             </div>
           </div>
           {vacancyReason === "resignation" && (
-            <div className="row" style={{ marginBottom: 12 }}>
-              <div>
-                <label>Predecessor name</label>
-                <input name="predecessorName" value={predecessorName} onChange={(e) => setPredecessorName(e.target.value)} />
+              <div className="row" style={{marginBottom: 12}}>
+                <div>
+                  <label>Predecessor name</label>
+                  <input name="predecessorName" value={predecessorName}
+                         onChange={(e) => setPredecessorName(e.target.value)}/>
+                </div>
+                <div>
+                  <label>Predecessor EPF no.</label>
+                  <input name="predecessorEpf" value={predecessorEpf}
+                         onChange={(e) => setPredecessorEpf(e.target.value)}/>
+                </div>
+                <div>
+                  <label>Predecessor designation</label>
+                  <input name="predecessorDesignation" value={predecessorDesignation}
+                         onChange={(e) => setPredecessorDesignation(e.target.value)}/>
+                </div>
+                <div>
+                  <label>Predecessor last working day</label>
+                  <input name="predecessorLastDay" type="date" value={predecessorLastDay}
+                         onChange={(e) => setPredecessorLastDay(e.target.value)}/>
+                </div>
               </div>
-              <div>
-                <label>Predecessor EPF no.</label>
-                <input name="predecessorEpf" value={predecessorEpf} onChange={(e) => setPredecessorEpf(e.target.value)} />
-              </div>
-              <div>
-                <label>Predecessor designation</label>
-                <input name="predecessorDesignation" value={predecessorDesignation} onChange={(e) => setPredecessorDesignation(e.target.value)} />
-              </div>
-              <div>
-                <label>Predecessor last working day</label>
-                <input name="predecessorLastDay" type="date" value={predecessorLastDay} onChange={(e) => setPredecessorLastDay(e.target.value)} />
-              </div>
-            </div>
           )}
           <div className="row">
             <div>
-              <label>Approved budget</label>
-              <input name="approvedBudget" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} />
+              <label>RRF number</label>
+              <input name="rrfNumber" value={rrfNumber} onChange={(e) => setRrfNumber(e.target.value)}/>
             </div>
             <div></div>
           </div>
           <div className="field full">
             <label>Justification (why this role opened) *</label>
-            <textarea name="justification" rows={2} value={justification} onChange={(e) => setJustification(e.target.value)} required />
+            <textarea name="justification" rows={2} value={justification}
+                      onChange={(e) => setJustification(e.target.value)} required/>
           </div>
           <div className="field full">
             <label>Tasks &mdash; numbered list, 3 to 5 items *</label>
-            <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required />
+            <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required/>
           </div>
           <div className="field full">
             <label>Must-have requirements &mdash; numbered list, 3 to 5 items *</label>
-            <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required />
+            <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required/>
           </div>
           <div className="toggle-row">
-            <label><input type="checkbox" name="screeningFmcg" defaultChecked /> FMCG experience required</label>
-            <label><input type="checkbox" name="screeningEducation" defaultChecked /> Education qualification required</label>
+            <label><input type="checkbox" name="screeningFmcg" defaultChecked/> FMCG experience required</label>
+            <label><input type="checkbox" name="screeningEducation" defaultChecked/> Education qualification
+              required</label>
           </div>
         </div>
 
@@ -167,12 +181,27 @@ export default function NewRequisitionPage() {
           <div className="row">
             <div>
               <label>Company for the recruitment</label>
-              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)} />
+              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)}/>
+            </div>
+            <div></div>
+          </div>
+          <div className="row">
+            <div>
+              <label>Approved budget</label>
+              <input name="approvedBudget" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)}/>
             </div>
             <div>
               <label>Current head count</label>
-              <input name="currentHeadcount" value={currentHeadcount} onChange={(e) => setCurrentHeadcount(e.target.value)} />
+              <input name="currentHeadcount" value={currentHeadcount}
+                     onChange={(e) => setCurrentHeadcount(e.target.value)}/>
             </div>
+          </div>
+          <div className="row" style={{marginBottom: 12}}>
+            <div>
+              <label>GAP (approved budget − current head count)</label>
+              <input value={gap} disabled/>
+            </div>
+            <div></div>
           </div>
           <div className="row">
             <div>

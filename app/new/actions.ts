@@ -8,7 +8,7 @@ export async function createRequisition(formData: FormData) {
   const supabase = supabaseServer();
 
   const vacancyReason = formData.get("vacancyReason") as string;
-  const designation = formData.get("designation") as string;
+  const rrfNumber = formData.get("rrfNumber") as string;
   const predecessorName = formData.get("predecessorName") as string;
   const predecessorEpf = formData.get("predecessorEpf") as string;
   const predecessorDesignation = formData.get("predecessorDesignation") as string;
@@ -54,6 +54,7 @@ export async function createRequisition(formData: FormData) {
       location,
       employment_type: employmentType,
       ta_lead: taLead,
+      rrf_number: rrfNumber,
       gm_hr: gmHr,
       justification,
       tasks,
