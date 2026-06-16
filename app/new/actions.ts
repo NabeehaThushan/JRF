@@ -34,12 +34,14 @@ export async function createRequisition(formData: FormData) {
   const screeningEducation = formData.get("screeningEducation") === "on";
   const reviewerNames = formData.getAll("reviewerName") as string[];
   const reviewerEmails = formData.getAll("reviewerEmail") as string[];
+    const designation = formData.get("designation") as string;
+
 
   const { data: req, error } = await supabase
     .from("requisitions")
     .insert({
       vacancy_reason: vacancyReason,
-      designation,
+        designation,
       predecessor_name: vacancyReason === "resignation" ? predecessorName : null,
       predecessor_epf: vacancyReason === "resignation" ? predecessorEpf : null,
       predecessor_designation: vacancyReason === "resignation" ? predecessorDesignation : null,
