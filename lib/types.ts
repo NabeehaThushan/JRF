@@ -19,6 +19,7 @@ export interface Requisition {
   id: string;
   vacancy_reason: "resignation" | "new_position";
   designation: string;
+  updated_at: string;
   predecessor_name: string | null;
   predecessor_epf: string | null;
   predecessor_last_day: string | null;
