@@ -12,56 +12,24 @@ export default function FinalApproveForm({
   requisition: any;
   steps: any[];
 }) {
+  const [result, setResult] = useState<any>(null);
   const [jdText, setJdText] = useState(requisition.jd_text || "");
   const [advertText, setAdvertText] = useState(requisition.advert_text || "");
   const [generating, setGenerating] = useState(false);
   const [pending, setPending] = useState(false);
 
-  // Build a combined context from all reviewer comments
   const reviewerNotes = steps
     .filter((s) => s.comment)
     .map((s) => `Stage ${s.stage_order} - ${s.reviewer_name}: "${s.comment}"`)
     .join("\n");
-
-  async function openAndGenerate() {
-  const base = "https://vezpr-jd-gen-production-5b83.up.railway.app";
-
-  const reviewerNotes = steps
-    .filter((s) => s.comment)
-    .map((s) => `Stage ${s.stage_order} - ${s.reviewer_name}: "${s.comment}"`)
-    .join("\n");
-
-  const enrichedTasks = requisition.tasks +
-    (reviewerNotes ? `\n\nReviewer feedback:\n${reviewerNotes}` : "");
-
-  const params = new URLSearchParams({
-    role_title: requisition.designation,
-    reason: requisition.justification,
-    tasks: enrichedTasks,
-    must_have: requisition.must_have,
-    salary: requisition.approved_budget || "",
-    company: "CBL Group",
-    company_description: "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
-    knockout_filters: [
-      requisition.screening_fmcg ? "Do you have FMCG experience?" : "",
-      requisition.screening_education ? "Do you meet the education requirements?" : "",
-    ].filter(Boolean).join("\n"),
-    autogenerate: "true", // ← this tells the JD site to auto-trigger generation
-  });
-
-  window.open(`${base}/?${params.toString()}`, "_blank");
-}
 
   async function generateJD() {
-    if (!requisition.designation) return;
     setGenerating(true);
     try {
+      const enrichedTasks =
+        requisition.tasks + (reviewerNotes ? `\n\nReviewer feedback to incorporate:\n${reviewerNotes}` : "");
 
-      // Combine original tasks/must-have with reviewer feedback
-      const enrichedTasks = requisition.tasks +
-        (reviewerNotes ? `\n\nReviewer feedback to incorporate:\n${reviewerNotes}` : "");
-
-      const res = await fetch(`/api/generate-jd`, {
+      const res = await fetch("/api/generate-jd", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -70,20 +38,20 @@ export default function FinalApproveForm({
           tasks: enrichedTasks,
           must_have: requisition.must_have,
           salary: requisition.approved_budget || "",
-          company: "CBL Group",
+          company: requisition.company || "Ceylon Biscuits Limited",
           company_description: "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
-          knockout_filters: [
-            requisition.screening_fmcg ? "Do you have FMCG experience?" : "",
-            requisition.screening_education ? "Do you meet the education requirements?" : "",
-          ].filter(Boolean).join("\n"),
         }),
       });
-
       const data = await res.json();
-      if (data.final_jd) setJdText(data.final_jd);
-      if (data.parsed?.job_description) setAdvertText(data.parsed.job_description);
+      if (data.final_jd) {
+        setResult(data);
+        setJdText(data.final_jd);
+        if (data.parsed?.job_description) setAdvertText(data.parsed.job_description);
+      } else {
+        alert("Generation failed. Check the backend is running.");
+      }
     } catch (e) {
-      alert("Generation failed. Check Railway is running.");
+      alert("Generation failed. Check the backend is running.");
     } finally {
       setGenerating(false);
     }
@@ -91,12 +59,11 @@ export default function FinalApproveForm({
 
   async function handle() {
     setPending(true);
-    await finalApprove(requisitionId, jdText, advertText);
+    await finalApprove(requisitionId, jdText, advertText, result);
   }
 
   return (
     <div>
-      {/* Show all reviewer comments */}
       {steps.filter((s) => s.comment).length > 0 && (
         <div className="card">
           <h2>Reviewer comments used in JD generation</h2>
@@ -115,47 +82,75 @@ export default function FinalApproveForm({
       <div className="card">
         <h2>Generate final JD</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
-          This uses all the original job details plus every reviewer's comments to generate the final JD.
+          Generates directly from the backend, using every reviewer's comments. The full result gets
+          saved permanently the moment you publish — nothing is lost afterward.
         </p>
-        <button
-          className="btn-primary"
-          onClick={openAndGenerate}
-          disabled={generating}
-          type="button"
-        >
-          {generating ? "Generating... (20–30 sec)" : "✦ Generate JD from all feedback →"}
+        <button className="btn-primary" onClick={generateJD} disabled={generating} type="button">
+          {generating ? "Generating... (20-30 sec)" : "✦ Generate JD from all feedback →"}
         </button>
       </div>
 
-      {jdText && (
-        <div className="card">
-          <h2>Final JD — review and edit</h2>
-          <div className="field full">
-            <label>JD text</label>
-            <textarea
-              rows={12}
-              value={jdText}
-              onChange={(e) => setJdText(e.target.value)}
-            />
+      {result && (
+        <>
+          <div className="card">
+            <h2>Job description</h2>
+            <div className="field full">
+              <label>JD text (edit if needed)</label>
+              <textarea rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)} />
+            </div>
+            <div className="field full" style={{ marginTop: 12 }}>
+              <label>Advert text (edit if needed)</label>
+              <textarea rows={4} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
+            </div>
           </div>
-          <div className="field full" style={{ marginTop: 12 }}>
-            <label>Advert text</label>
-            <textarea
-              rows={5}
-              value={advertText}
-              onChange={(e) => setAdvertText(e.target.value)}
-            />
+
+          {(result.parsed?.skills || result.parsed?.tags) && (
+            <div className="card">
+              <h2>Skills and tags</h2>
+              {result.parsed?.skills && <p className="meta"><strong>Skills:</strong> {result.parsed.skills}</p>}
+              {result.parsed?.tags && <p className="meta"><strong>Tags:</strong> {result.parsed.tags}</p>}
+            </div>
+          )}
+
+          {(result.parsed?.knockout_filters || result.parsed?.screening_questions) && (
+            <div className="card">
+              <h2>Screening</h2>
+              {result.parsed?.knockout_filters && (
+                <p className="meta"><strong>Knockout filters:</strong> {result.parsed.knockout_filters}</p>
+              )}
+              {result.parsed?.screening_questions && (
+                <p className="meta"><strong>Pre-screening questions:</strong> {result.parsed.screening_questions}</p>
+              )}
+            </div>
+          )}
+
+          {result.best_fit && (
+            <div className="card">
+              <h2>Best-fit candidate profile</h2>
+              {result.best_fit.summary && <p className="meta">{result.best_fit.summary}</p>}
+              {result.best_fit.years_experience_min !== undefined && (
+                <p className="meta">
+                  <strong>Experience:</strong> {result.best_fit.years_experience_min}–{result.best_fit.years_experience_max} years
+                </p>
+              )}
+              {result.best_fit.ideal_titles?.length > 0 && (
+                <p className="meta"><strong>Likely previous titles:</strong> {result.best_fit.ideal_titles.join(", ")}</p>
+              )}
+              {result.best_fit.must_have_keywords?.length > 0 && (
+                <p className="meta"><strong>Strong resume keywords:</strong> {result.best_fit.must_have_keywords.join(", ")}</p>
+              )}
+              {result.best_fit.red_flag_keywords?.length > 0 && (
+                <p className="meta"><strong>Watch-out signals:</strong> {result.best_fit.red_flag_keywords.join(", ")}</p>
+              )}
+            </div>
+          )}
+
+          <div className="card">
+            <button className="btn-primary" disabled={pending} onClick={handle} type="button">
+              ✓ Approve and publish
+            </button>
           </div>
-          <button
-            className="btn-primary"
-            disabled={pending}
-            onClick={handle}
-            style={{ marginTop: 12 }}
-            type="button"
-          >
-            ✓ Approve and publish
-          </button>
-        </div>
+        </>
       )}
     </div>
   );

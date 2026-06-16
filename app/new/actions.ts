@@ -7,7 +7,10 @@ import { redirect } from "next/navigation";
 export async function createRequisition(formData: FormData) {
   const supabase = supabaseServer();
 
+  const taName = formData.get("taName") as string;
+  const taEmail = formData.get("taEmail") as string;
   const vacancyReason = formData.get("vacancyReason") as string;
+  const designation = formData.get("designation") as string;
   const rrfNumber = formData.get("rrfNumber") as string;
   const predecessorName = formData.get("predecessorName") as string;
   const predecessorEpf = formData.get("predecessorEpf") as string;
@@ -34,14 +37,32 @@ export async function createRequisition(formData: FormData) {
   const screeningEducation = formData.get("screeningEducation") === "on";
   const reviewerNames = formData.getAll("reviewerName") as string[];
   const reviewerEmails = formData.getAll("reviewerEmail") as string[];
-    const designation = formData.get("designation") as string;
 
+  let attachmentUrl: string | null = null;
+  const attachmentFile = formData.get("attachment") as File | null;
+  if (attachmentFile && attachmentFile.size > 0) {
+    const ext = attachmentFile.name.split(".").pop();
+    const path = `requisitions/${Date.now()}.${ext}`;
+    const bytes = await attachmentFile.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from("attachments")
+      .upload(path, bytes, { contentType: attachmentFile.type });
+    if (uploadError) {
+      console.error("Attachment upload failed:", uploadError);
+    } else {
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      attachmentUrl = urlData.publicUrl;
+    }
+  }
 
   const { data: req, error } = await supabase
     .from("requisitions")
     .insert({
+      ta_name: taName,
+      ta_email: taEmail,
       vacancy_reason: vacancyReason,
-        designation,
+      designation,
+      rrf_number: rrfNumber,
       predecessor_name: vacancyReason === "resignation" ? predecessorName : null,
       predecessor_epf: vacancyReason === "resignation" ? predecessorEpf : null,
       predecessor_designation: vacancyReason === "resignation" ? predecessorDesignation : null,
@@ -56,7 +77,6 @@ export async function createRequisition(formData: FormData) {
       location,
       employment_type: employmentType,
       ta_lead: taLead,
-      rrf_number: rrfNumber,
       gm_hr: gmHr,
       justification,
       tasks,
@@ -64,6 +84,7 @@ export async function createRequisition(formData: FormData) {
       approved_budget: approvedBudget,
       jd_text: jdText,
       advert_text: advertText,
+      attachment_url: attachmentUrl,
       screening_fmcg: screeningFmcg,
       screening_education: screeningEducation,
       status: "in_review",

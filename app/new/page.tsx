@@ -9,8 +9,11 @@ interface Reviewer {
 }
 
 export default function NewRequisitionPage() {
+  const [taName, setTaName] = useState("");
+  const [taEmail, setTaEmail] = useState("");
   const [vacancyReason, setVacancyReason] = useState("resignation");
   const [designation, setDesignation] = useState("");
+  const [rrfNumber, setRrfNumber] = useState("");
   const [predecessorName, setPredecessorName] = useState("");
   const [predecessorEpf, setPredecessorEpf] = useState("");
   const [predecessorDesignation, setPredecessorDesignation] = useState("");
@@ -34,7 +37,7 @@ export default function NewRequisitionPage() {
   const [jdText, setJdText] = useState("");
   const [advertText, setAdvertText] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [rrfNumber, setRrfNumber] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [reviewers, setReviewers] = useState<Reviewer[]>([
     { name: "", email: "" },
     { name: "", email: "" },
@@ -91,88 +94,87 @@ export default function NewRequisitionPage() {
   }
 
   const gap = (() => {
-  const b = parseFloat(approvedBudget);
-  const h = parseFloat(currentHeadcount);
-  if (isNaN(b) || isNaN(h)) return "—";
-  return String(b - h);
-})();
+    const b = parseFloat(approvedBudget);
+    const h = parseFloat(currentHeadcount);
+    if (isNaN(b) || isNaN(h)) return "—";
+    return String(b - h);
+  })();
 
   return (
     <main className="container">
       <h1>New requisition</h1>
       <form action={createRequisition}>
         <div className="card">
+          <h2>Your details</h2>
+          <div className="row">
+            <div>
+              <label>Your name *</label>
+              <input name="taName" value={taName} onChange={(e) => setTaName(e.target.value)} required />
+            </div>
+            <div>
+              <label>Your email *</label>
+              <input name="taEmail" type="email" value={taEmail} onChange={(e) => setTaEmail(e.target.value)} required />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
           <h2>Job details</h2>
           <div className="row">
             <div>
               <label>Vacancy arising due to *</label>
-              <select
-                  name="vacancyReason"
-                  value={vacancyReason}
-                  onChange={(e) => setVacancyReason(e.target.value)}
-              >
+              <select name="vacancyReason" value={vacancyReason} onChange={(e) => setVacancyReason(e.target.value)}>
                 <option value="resignation">Resignation</option>
                 <option value="new_position">Budgeted new position</option>
               </select>
             </div>
             <div>
               <label>Designation *</label>
-              <input
-                  name="designation"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  required
-              />
+              <input name="designation" value={designation} onChange={(e) => setDesignation(e.target.value)} required />
             </div>
           </div>
           {vacancyReason === "resignation" && (
-              <div className="row" style={{marginBottom: 12}}>
-                <div>
-                  <label>Predecessor name</label>
-                  <input name="predecessorName" value={predecessorName}
-                         onChange={(e) => setPredecessorName(e.target.value)}/>
-                </div>
-                <div>
-                  <label>Predecessor EPF no.</label>
-                  <input name="predecessorEpf" value={predecessorEpf}
-                         onChange={(e) => setPredecessorEpf(e.target.value)}/>
-                </div>
-                <div>
-                  <label>Predecessor designation</label>
-                  <input name="predecessorDesignation" value={predecessorDesignation}
-                         onChange={(e) => setPredecessorDesignation(e.target.value)}/>
-                </div>
-                <div>
-                  <label>Predecessor last working day</label>
-                  <input name="predecessorLastDay" type="date" value={predecessorLastDay}
-                         onChange={(e) => setPredecessorLastDay(e.target.value)}/>
-                </div>
+            <div className="row" style={{ marginBottom: 12 }}>
+              <div>
+                <label>Predecessor name</label>
+                <input name="predecessorName" value={predecessorName} onChange={(e) => setPredecessorName(e.target.value)} />
               </div>
+              <div>
+                <label>Predecessor EPF no.</label>
+                <input name="predecessorEpf" value={predecessorEpf} onChange={(e) => setPredecessorEpf(e.target.value)} />
+              </div>
+              <div>
+                <label>Predecessor designation</label>
+                <input name="predecessorDesignation" value={predecessorDesignation} onChange={(e) => setPredecessorDesignation(e.target.value)} />
+              </div>
+              <div>
+                <label>Predecessor last working day</label>
+                <input name="predecessorLastDay" type="date" value={predecessorLastDay} onChange={(e) => setPredecessorLastDay(e.target.value)} />
+              </div>
+            </div>
           )}
           <div className="row">
             <div>
               <label>RRF number</label>
-              <input name="rrfNumber" value={rrfNumber} onChange={(e) => setRrfNumber(e.target.value)}/>
+              <input name="rrfNumber" value={rrfNumber} onChange={(e) => setRrfNumber(e.target.value)} />
             </div>
             <div></div>
           </div>
           <div className="field full">
             <label>Justification (why this role opened) *</label>
-            <textarea name="justification" rows={2} value={justification}
-                      onChange={(e) => setJustification(e.target.value)} required/>
+            <textarea name="justification" rows={2} value={justification} onChange={(e) => setJustification(e.target.value)} required />
           </div>
           <div className="field full">
             <label>Tasks &mdash; numbered list, 3 to 5 items *</label>
-            <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required/>
+            <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required />
           </div>
           <div className="field full">
             <label>Must-have requirements &mdash; numbered list, 3 to 5 items *</label>
-            <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required/>
+            <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required />
           </div>
           <div className="toggle-row">
-            <label><input type="checkbox" name="screeningFmcg" defaultChecked/> FMCG experience required</label>
-            <label><input type="checkbox" name="screeningEducation" defaultChecked/> Education qualification
-              required</label>
+            <label><input type="checkbox" name="screeningFmcg" defaultChecked /> FMCG experience required</label>
+            <label><input type="checkbox" name="screeningEducation" defaultChecked /> Education qualification required</label>
           </div>
         </div>
 
@@ -181,25 +183,24 @@ export default function NewRequisitionPage() {
           <div className="row">
             <div>
               <label>Company for the recruitment</label>
-              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)}/>
+              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)} />
             </div>
             <div></div>
           </div>
           <div className="row">
             <div>
               <label>Approved budget</label>
-              <input name="approvedBudget" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)}/>
+              <input name="approvedBudget" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} />
             </div>
             <div>
               <label>Current head count</label>
-              <input name="currentHeadcount" value={currentHeadcount}
-                     onChange={(e) => setCurrentHeadcount(e.target.value)}/>
+              <input name="currentHeadcount" value={currentHeadcount} onChange={(e) => setCurrentHeadcount(e.target.value)} />
             </div>
           </div>
-          <div className="row" style={{marginBottom: 12}}>
+          <div className="row" style={{ marginBottom: 12 }}>
             <div>
               <label>GAP (approved budget − current head count)</label>
-              <input value={gap} disabled/>
+              <input value={gap} disabled />
             </div>
             <div></div>
           </div>
@@ -271,6 +272,21 @@ export default function NewRequisitionPage() {
                 <textarea name="advertText" rows={4} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
               </div>
             </>
+          )}
+        </div>
+
+        <div className="card">
+          <h2>Supporting document (optional)</h2>
+          <p className="muted">Upload an existing JD, org chart, or any reference document.</p>
+          <input
+            type="file"
+            name="attachment"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+            style={{ marginTop: 8 }}
+          />
+          {attachmentFile && (
+            <p className="meta" style={{ marginTop: 6 }}>Selected: {attachmentFile.name}</p>
           )}
         </div>
 
