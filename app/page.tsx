@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { Requisition, ReviewStep } from "@/lib/types";
 import AutoRefresh from "@/components/AutoRefresh";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function statusLabel(status: string) {
   switch (status) {
