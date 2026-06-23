@@ -25,58 +25,101 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   }
 
+  const roleTitle = body.role_title || "";
+  const location = body.location || "Pannipitiya";
+  const company = body.company || "Ceylon Biscuits Limited";
+  const manualJd = body.tasks || "";
+  const mustHave = body.must_have || "";
+
+  // Extract just the company intro from the Word doc (everything before DESIGNATION:)
+  let companyIntro = "";
   if (docText) {
-    body.company_description = `Use the following document as the base template for the job description. Keep the company introduction paragraph exactly as written. Only update the designation, location, role profile and personal profile sections based on the job details provided.\n\n---\n${docText}`;
+    const designationIndex = docText.toUpperCase().indexOf("DESIGNATION:");
+    if (designationIndex > 0) {
+      companyIntro = docText.substring(0, designationIndex).trim();
+    } else {
+      companyIntro = docText.trim();
+    }
   }
 
-  // Step 1 — generate main JD
-  const res = await fetch(`${backendBase}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  // Build the advert prompt
+  const advertPrompt = companyIntro
+    ? `You are writing a job advertisement for ${company}. Follow these rules strictly:
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Railway JD error:", text);
-    return NextResponse.json({ error: text }, { status: 500 });
-  }
+1. Start with this EXACT company introduction, word for word, do not change a single word, comma, or full stop:
 
-  const data = await res.json();
+${companyIntro}
 
-  // Step 2 — generate short public advert separately
-  const advertPrompt = docText
-    ? `Using this company template, write a short public job advert. Keep the company introduction paragraph exactly as written in the template. Update only the designation, location, role profile bullets and personal profile bullets based on the job details. Max 200 words total. No first 90 days section, no screening questions, no internal details, no salary.\n\n---\n${docText}`
-    : `Write a short public job advert for ${body.role_title} at Ceylon Biscuits Limited in this exact format:
+2. Then add these lines exactly:
+DESIGNATION: ${roleTitle.toUpperCase()}
+COMPANY NAME: ${company.toUpperCase()}
+LOCATION: ${location.toUpperCase()}
+
+3. Then write ROLE PROFILE using dashes (-). Extract ALL key responsibilities from this job description — do not limit to 5, include every meaningful point:
+${manualJd}
+Make each bullet point specific and action-oriented. Do not copy verbatim — summarise into clear concise bullets. Minimum 5, no maximum.
+
+4. Then write PERSONAL PROFILE using dashes (-). Extract ALL requirements from the personal profile — do not limit to 5, include every meaningful qualification, skill and experience point:
+${mustHave}
+Always include education requirements, years of experience, technical skills, soft skills and any other relevant criteria mentioned. Minimum 5, no maximum.
+
+5. End with exactly these two lines:
+Click here to apply now!
+Apply within 7 days of this advert being published.
+
+Do not add any other sections. Do not add salary, conditions, team info, or screening questions. Output only the advert text, nothing else.`
+    : `Write a job advertisement for ${company} in this exact format:
 
 JOIN A TEAM DRIVEN BY EXCELLENCE
-[2-3 sentence company intro about CBL Group being Sri Lanka's largest food conglomerate]
+[3 paragraph company introduction about CBL Group being Sri Lanka's largest food conglomerate, their brands including Munchee, Ritzbury, Revello, Tiara, Samaposha, and their values of caring, quality, innovation and integrity]
 
-DESIGNATION: ${body.role_title}
-COMPANY NAME: CEYLON BISCUITS LIMITED
-LOCATION: ${body.location || "Pannipitiya"}
+DESIGNATION: ${roleTitle.toUpperCase()}
+COMPANY NAME: ${company.toUpperCase()}
+LOCATION: ${location.toUpperCase()}
 
 ROLE PROFILE
-[3-4 bullet points of key responsibilities based on: ${body.tasks}]
+[All key responsibilities as bullet points using dashes (-) based on: ${manualJd}. Include every meaningful point, minimum 5, no maximum limit.]
 
 PERSONAL PROFILE
-[3-4 bullet points of requirements based on: ${body.must_have}]
+[All requirements as bullet points using dashes (-) based on: ${mustHave}. Include education, years of experience, technical skills, soft skills and any other relevant criteria. Minimum 5, no maximum limit.]
 
 Click here to apply now!
 Apply within 7 days of this advert being published.
 
-Keep it under 200 words. No first 90 days, no screening questions, no internal details.`;
+Output only the advert, no extra sections, no salary, no conditions.`;
 
+  // Step 1 — generate main JD (for the full JD text)
+  const mainRes = await fetch(`${backendBase}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...body,
+      company_description: companyIntro
+        ? `Use this VERBATIM as the company introduction, do not change any words:\n\n${companyIntro}`
+        : "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
+    }),
+  });
+
+  let mainData: any = {};
+  if (mainRes.ok) {
+    mainData = await mainRes.json();
+  } else {
+    const text = await mainRes.text();
+    console.error("Railway JD error:", text);
+    return NextResponse.json({ error: text }, { status: 500 });
+  }
+
+  // Step 2 — generate advert separately with strict prompt
   const advertRes = await fetch(`${backendBase}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      role_title: body.role_title,
+      role_title: roleTitle,
       reason: body.reason || "Replacement hire",
-      tasks: body.tasks,
-      must_have: body.must_have,
-      company: body.company || "Ceylon Biscuits Limited",
-      company_description: advertPrompt,
+      tasks: advertPrompt,
+      must_have: mustHave,
+      company: company,
+      company_description: "Follow the instructions in the tasks field exactly. Output only the advert.",
     }),
   });
 
@@ -87,7 +130,7 @@ Keep it under 200 words. No first 90 days, no screening questions, no internal d
   }
 
   return NextResponse.json({
-    ...data,
+    ...mainData,
     advert_text: advertText,
   });
 }

@@ -96,22 +96,21 @@ export default function ReviewActionForm({
 }) {
   const [sections, setSections] = useState<{
     advert: SectionDecision;
-    jd: SectionDecision;
     knockout: SectionDecision;
     screening: SectionDecision;
-  }>({ advert: null, jd: null, knockout: null, screening: null });
+  }>({ advert: null, knockout: null, screening: null });
 
   const [comment, setComment] = useState("");
   const [pending, setPending] = useState(false);
   const [submitted, setSubmitted] = useState<"approved" | "rejected" | "needs_clarification" | null>(null);
 
   useEffect(() => {
-  if (typeof window !== "undefined" && window.history.state?.submitted) {
-    setSubmitted(window.history.state.submitted);
-    if (window.history.state.sections) setSections(window.history.state.sections);
-    if (window.history.state.comment) setComment(window.history.state.comment);
-  }
-}, []);
+    if (typeof window !== "undefined" && window.history.state?.submitted) {
+      setSubmitted(window.history.state.submitted);
+      if (window.history.state.sections) setSections(window.history.state.sections);
+      if (window.history.state.comment) setComment(window.history.state.comment);
+    }
+  }, []);
 
   const knockoutContent = [
     requisition?.screening_fmcg ? "• Do you have FMCG experience?" : "",
@@ -130,7 +129,12 @@ export default function ReviewActionForm({
 
   async function handle(decision: "approved" | "rejected" | "needs_clarification") {
     setPending(true);
-    await submitReview(token, decision, comment, sections);
+    await submitReview(token, decision, comment, {
+      advert: sections.advert,
+      jd: null,
+      knockout: sections.knockout,
+      screening: sections.screening,
+    });
     setPending(false);
     setSubmitted(decision);
     window.history.replaceState({ submitted: decision, sections, comment }, "", window.location.href);
@@ -165,8 +169,7 @@ export default function ReviewActionForm({
             Your section decisions
           </p>
           {[
-            { label: "Advert text", val: sections.advert },
-            { label: "AI JD text", val: sections.jd },
+            { label: "AI advert text", val: sections.advert },
             { label: "Knockout filters", val: sections.knockout },
             { label: "Pre-screening questions", val: sections.screening },
           ].map(({ label, val }) => (
@@ -195,17 +198,12 @@ export default function ReviewActionForm({
   return (
     <div>
       <p className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
-        Review each section and mark ✓ or ✕. All four must be marked before you can submit your decision.
+        Review each section and mark ✓ or ✕. All three must be marked before you can submit your decision.
       </p>
 
       {requisition?.advert_text && (
-        <SectionBlock label="Advert text" content={requisition.advert_text}
+        <SectionBlock label="AI advert text" content={requisition.advert_text}
           decision={sections.advert} onChange={(v) => set("advert", v)} locked={false} />
-      )}
-
-      {requisition?.jd_text && (
-        <SectionBlock label="AI JD text" content={requisition.jd_text}
-          decision={sections.jd} onChange={(v) => set("jd", v)} locked={false} />
       )}
 
       <SectionBlock label="Knockout filter questions" content={knockoutContent}
@@ -219,8 +217,33 @@ export default function ReviewActionForm({
           <label style={{ fontWeight: 600, fontSize: 13 }}>
             Comment {anyRejected ? "(required — some sections need work)" : "(optional)"}
           </label>
+          {!anyRejected && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0" }}>
+              {[
+                "Looks good, proceed.",
+                "Approved as submitted.",
+                "No changes required.",
+                "Please update the role profile bullets.",
+                "Personal profile needs more detail.",
+                "Advert text needs revision.",
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setComment(suggestion)}
+                  style={{
+                    fontSize: 11, padding: "4px 10px", borderRadius: 20,
+                    border: "1px solid #e0e0e0", background: comment === suggestion ? "#f0f0f0" : "#fff",
+                    cursor: "pointer", color: "#555",
+                  }}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
-            placeholder="Add your notes here..."
+            placeholder="Add your notes here or pick a suggestion above..."
             rows={3}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -243,7 +266,7 @@ export default function ReviewActionForm({
         </div>
       ) : (
         <p className="muted" style={{ marginTop: 12, fontSize: 12 }}>
-          Mark all 4 sections above to unlock the approve / reject buttons.
+          Mark all 3 sections above to unlock the approve / reject buttons.
         </p>
       )}
     </div>
