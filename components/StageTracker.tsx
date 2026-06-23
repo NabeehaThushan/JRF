@@ -89,12 +89,31 @@ export default function StageTracker({
                     "{s.comment}"
                   </div>
                 )}
+                {(s.section_advert || s.section_jd || s.section_knockout || s.section_screening) && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                    {[
+                      { label: "Advert", val: s.section_advert },
+                      { label: "JD", val: s.section_jd },
+                      { label: "Knockout", val: s.section_knockout },
+                      { label: "Screening", val: s.section_screening },
+                    ].map(({ label, val }) => val ? (
+                      <span key={label} style={{
+                        fontSize: 11, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+                        background: val === "approved" ? "#e3f8e9" : "#fdeaea",
+                        color: val === "approved" ? "#137a3d" : "#a33",
+                        border: `1px solid ${val === "approved" ? "#bfe8cd" : "#f3c2c2"}`,
+                      }}>
+                        {val === "approved" ? "✓" : "✕"} {label}
+                      </span>
+                    ) : null)}
+                  </div>
+                )}
                 {s.acted_at && (
                   <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>
                     {new Date(s.acted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                 )}
-                {state === "pending" && showCopyLink &&(
+                {state === "pending" && showCopyLink && (
                   <div style={{ marginTop: 6 }}>
                     <CopyLinkButton token={s.token} />
                   </div>

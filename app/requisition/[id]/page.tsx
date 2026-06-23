@@ -82,17 +82,17 @@ export default async function RequisitionPage({ params }: { params: { id: string
         )}
       </div>
 
-      {req.jd_text && (
-        <div className="card">
-          <h2>Job description</h2>
-          <pre className="jd-text">{req.jd_text}</pre>
-        </div>
-      )}
-
       {req.advert_text && (
         <div className="card">
           <h2>Advert text</h2>
           <pre className="jd-text">{req.advert_text}</pre>
+        </div>
+      )}
+
+      {req.jd_text && (
+        <div className="card">
+          <h2>Job description</h2>
+          <pre className="jd-text">{req.jd_text}</pre>
         </div>
       )}
 

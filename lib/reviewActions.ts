@@ -7,13 +7,27 @@ import { revalidatePath } from "next/cache";
 export async function submitReview(
   token: string,
   decision: "approved" | "rejected" | "needs_clarification",
-  comment: string
+  comment: string,
+  sections?: {
+    jd: "approved" | "rejected" | null;
+    advert: "approved" | "rejected" | null;
+    knockout: "approved" | "rejected" | null;
+    screening: "approved" | "rejected" | null;
+  }
 ) {
   const supabase = supabaseServer();
 
   const { data: step, error } = await supabase
     .from("review_steps")
-    .update({ status: decision, comment, acted_at: new Date().toISOString() })
+    .update({
+      status: decision,
+      comment,
+      acted_at: new Date().toISOString(),
+      section_jd: sections?.jd || null,
+      section_advert: sections?.advert || null,
+      section_knockout: sections?.knockout || null,
+      section_screening: sections?.screening || null,
+    })
     .eq("token", token)
     .select()
     .single();
