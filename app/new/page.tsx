@@ -11,29 +11,26 @@ interface Reviewer {
 export default function NewRequisitionPage() {
   const [taName, setTaName] = useState("");
   const [taEmail, setTaEmail] = useState("");
+  const [rrfNumber, setRrfNumber] = useState("");
   const [vacancyReason, setVacancyReason] = useState("resignation");
   const [designation, setDesignation] = useState("");
-  const [rrfNumber, setRrfNumber] = useState("");
+  const [grade, setGrade] = useState("");
+  const [employmentType, setEmploymentType] = useState("Permanent");
   const [predecessorName, setPredecessorName] = useState("");
   const [predecessorEpf, setPredecessorEpf] = useState("");
   const [predecessorDesignation, setPredecessorDesignation] = useState("");
   const [predecessorLastDay, setPredecessorLastDay] = useState("");
   const [company, setCompany] = useState("Ceylon Biscuits Limited");
+  const [approvedBudget, setApprovedBudget] = useState("");
   const [currentHeadcount, setCurrentHeadcount] = useState("");
-  const [grade, setGrade] = useState("");
   const [immediateSupervisor, setImmediateSupervisor] = useState("");
   const [hod, setHod] = useState("");
   const [division, setDivision] = useState("");
   const [subDivision, setSubDivision] = useState("");
   const [location, setLocation] = useState("");
-  const [employmentType, setEmploymentType] = useState("Permanent");
   const [taLead, setTaLead] = useState("");
   const [gmHr, setGmHr] = useState("");
   const [justification, setJustification] = useState("");
-  const [tasks, setTasks] = useState("");
-  const [mustHave, setMustHave] = useState("");
-  const [approvedBudget, setApprovedBudget] = useState("");
-  const [showJd, setShowJd] = useState(false);
   const [jdText, setJdText] = useState("");
   const [advertText, setAdvertText] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -48,9 +45,16 @@ export default function NewRequisitionPage() {
     { name: "", email: "" },
   ]);
 
-  async function generateJD() {
-    if (!designation || !justification || !tasks || !mustHave) {
-      alert("Fill in designation, justification, tasks and must-have before generating.");
+  const gap = (() => {
+    const b = parseFloat(approvedBudget);
+    const h = parseFloat(currentHeadcount);
+    if (isNaN(b) || isNaN(h)) return "—";
+    return String(b - h);
+  })();
+
+  async function generateAdvert() {
+    if (!designation || !justification) {
+      alert("Fill in designation and justification before generating.");
       return;
     }
     setGenerating(true);
@@ -58,19 +62,20 @@ export default function NewRequisitionPage() {
       const fd = new FormData();
       fd.append("role_title", designation);
       fd.append("reason", justification);
-      fd.append("tasks", tasks);
-      fd.append("must_have", mustHave);
+      fd.append("tasks", jdText || "See job description above");
+      fd.append("must_have", "See job description above");
       fd.append("salary", approvedBudget || "");
       fd.append("company", company || "Ceylon Biscuits Limited");
-      fd.append("company_description", "CBL Group is a leading FMCG conglomerate in Sri Lanka.");
       fd.append("location", location || "Pannipitiya");
+      fd.append("company_description", "CBL Group is a leading FMCG conglomerate in Sri Lanka.");
       if (docFile) fd.append("document", docFile);
 
       const res = await fetch("/api/generate-jd", { method: "POST", body: fd });
       const data = await res.json();
-      if (data.final_jd) {
-        setJdText(data.final_jd);
-        if (data.advert_text) setAdvertText(data.advert_text);
+      if (data.advert_text) {
+        setAdvertText(data.advert_text);
+      } else if (data.final_jd) {
+        setAdvertText(data.final_jd);
       } else {
         alert("Generation failed.");
       }
@@ -93,13 +98,6 @@ export default function NewRequisitionPage() {
     setReviewers((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  const gap = (() => {
-    const b = parseFloat(approvedBudget);
-    const h = parseFloat(currentHeadcount);
-    if (isNaN(b) || isNaN(h)) return "—";
-    return String(b - h);
-  })();
-
   return (
     <main className="container">
       <h1>New requisition</h1>
@@ -120,8 +118,13 @@ export default function NewRequisitionPage() {
         </div>
 
         <div className="card">
-          <h2>Job details</h2>
+          <h2>Requisition details</h2>
+
           <div className="row">
+            <div>
+              <label>RRF number</label>
+              <input name="rrfNumber" value={rrfNumber} onChange={(e) => setRrfNumber(e.target.value)} />
+            </div>
             <div>
               <label>Vacancy arising due to *</label>
               <select name="vacancyReason" value={vacancyReason} onChange={(e) => setVacancyReason(e.target.value)}>
@@ -129,75 +132,61 @@ export default function NewRequisitionPage() {
                 <option value="new_position">Budgeted new position</option>
               </select>
             </div>
+          </div>
+
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>Designation *</label>
               <input name="designation" value={designation} onChange={(e) => setDesignation(e.target.value)} required />
             </div>
+            <div>
+              <label>Grade</label>
+              <input name="grade" value={grade} onChange={(e) => setGrade(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="row" style={{ marginTop: 12 }}>
+            <div>
+              <label>Type of employment</label>
+              <input name="employmentType" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} />
+            </div>
+            <div></div>
           </div>
 
           {vacancyReason === "resignation" && (
-            <div className="row" style={{ marginBottom: 12 }}>
-              <div>
-                <label>Predecessor name</label>
-                <input name="predecessorName" value={predecessorName} onChange={(e) => setPredecessorName(e.target.value)} />
+            <>
+              <div className="row" style={{ marginTop: 12 }}>
+                <div>
+                  <label>Predecessor name</label>
+                  <input name="predecessorName" value={predecessorName} onChange={(e) => setPredecessorName(e.target.value)} />
+                </div>
+                <div>
+                  <label>Predecessor EPF no.</label>
+                  <input name="predecessorEpf" value={predecessorEpf} onChange={(e) => setPredecessorEpf(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <label>Predecessor EPF no.</label>
-                <input name="predecessorEpf" value={predecessorEpf} onChange={(e) => setPredecessorEpf(e.target.value)} />
+              <div className="row" style={{ marginTop: 12 }}>
+                <div>
+                  <label>Predecessor designation</label>
+                  <input name="predecessorDesignation" value={predecessorDesignation} onChange={(e) => setPredecessorDesignation(e.target.value)} />
+                </div>
+                <div>
+                  <label>Predecessor last working day (P.E.D.)</label>
+                  <input name="predecessorLastDay" type="date" value={predecessorLastDay} onChange={(e) => setPredecessorLastDay(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <label>Predecessor designation</label>
-                <input name="predecessorDesignation" value={predecessorDesignation} onChange={(e) => setPredecessorDesignation(e.target.value)} />
-              </div>
-              <div>
-                <label>Predecessor last working day</label>
-                <input name="predecessorLastDay" type="date" value={predecessorLastDay} onChange={(e) => setPredecessorLastDay(e.target.value)} />
-              </div>
-            </div>
+            </>
           )}
 
-          <div className="row">
-            <div>
-              <label>RRF number</label>
-              <input name="rrfNumber" value={rrfNumber} onChange={(e) => setRrfNumber(e.target.value)} />
-            </div>
-            <div></div>
-          </div>
-
-          <div className="field full">
-            <label>Justification (why this role opened) *</label>
-            <textarea name="justification" rows={2} value={justification} onChange={(e) => setJustification(e.target.value)} required />
-          </div>
-          <div className="field full">
-            <label>Tasks — numbered list, 3 to 5 items *</label>
-            <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required />
-          </div>
-          <div className="field full">
-            <label>Must-have requirements — numbered list, 3 to 5 items *</label>
-            <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required />
-          </div>
-          <div className="toggle-row">
-            <label>
-              <input type="checkbox" name="screeningFmcg" defaultChecked />
-              FMCG experience required
-            </label>
-            <label>
-              <input type="checkbox" name="screeningEducation" defaultChecked />
-              Education qualification required
-            </label>
-          </div>
-        </div>
-
-        <div className="card">
-          <h2>Organisation details</h2>
-          <div className="row">
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>Company for the recruitment</label>
-              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)}/>
+              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)} />
             </div>
             <div></div>
           </div>
-          <div className="row">
+
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>Approved budget</label>
               <input name="approvedBudget" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} />
@@ -207,41 +196,16 @@ export default function NewRequisitionPage() {
               <input name="currentHeadcount" value={currentHeadcount} onChange={(e) => setCurrentHeadcount(e.target.value)} />
             </div>
           </div>
-          <div className="row" style={{ marginBottom: 12 }}>
+
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>GAP (approved budget − current head count)</label>
               <input value={gap} disabled />
             </div>
             <div></div>
           </div>
-          <div className="row">
-            <div>
-              <label>Grade for the recruitment</label>
-              <input name="grade" value={grade} onChange={(e) => setGrade(e.target.value)} />
-            </div>
-            <div>
-              <label>Type of employment</label>
-              <input name="employmentType" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} />
-            </div>
-          </div>
-          <div className="row">
-            <div>
-              <label>Division 1</label>
-              <input name="division" value={division} onChange={(e) => setDivision(e.target.value)} />
-            </div>
-            <div>
-              <label>Sub division</label>
-              <input name="subDivision" value={subDivision} onChange={(e) => setSubDivision(e.target.value)} />
-            </div>
-          </div>
-          <div className="row">
-            <div>
-              <label>Location</label>
-              <input name="location" value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-            <div></div>
-          </div>
-          <div className="row">
+
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>Immediate supervisor</label>
               <input name="immediateSupervisor" value={immediateSupervisor} onChange={(e) => setImmediateSupervisor(e.target.value)} />
@@ -251,57 +215,85 @@ export default function NewRequisitionPage() {
               <input name="hod" value={hod} onChange={(e) => setHod(e.target.value)} />
             </div>
           </div>
-          <div className="row">
+
+          <div className="row" style={{ marginTop: 12 }}>
+            <div>
+              <label>Division 1</label>
+              <input name="division" value={division} onChange={(e) => setDivision(e.target.value)} />
+            </div>
+            <div>
+              <label>Sub division</label>
+              <input name="subDivision" value={subDivision} onChange={(e) => setSubDivision(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="row" style={{ marginTop: 12 }}>
+            <div>
+              <label>Location</label>
+              <input name="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
             <div>
               <label>TA lead</label>
               <input name="taLead" value={taLead} onChange={(e) => setTaLead(e.target.value)} />
             </div>
+          </div>
+
+          <div className="row" style={{ marginTop: 12 }}>
             <div>
               <label>GM HR</label>
               <input name="gmHr" value={gmHr} onChange={(e) => setGmHr(e.target.value)} />
             </div>
+            <div></div>
           </div>
-        </div>
 
-        <div className="card">
-          <h2>Job description (optional at this step)</h2>
-          {!showJd ? (
-            <button type="button" onClick={() => setShowJd(true)}>Add job description now</button>
-          ) : (
-            <>
-              <div className="field full" style={{ marginBottom: 14 }}>
-                <label>Upload reference document (optional)</label>
-                <p className="muted" style={{ marginBottom: 6 }}>
-                  Upload a Word doc (.docx) — AI will follow its structure and keep the company intro as-is.
-                </p>
-                <input
-                  type="file"
-                  accept=".docx"
-                  onChange={(e) => setDocFile(e.target.files?.[0] || null)}
-                />
-                {docFile && (
-                  <p className="meta" style={{ marginTop: 4 }}>Selected: {docFile.name}</p>
-                )}
-              </div>
+          <div style={{ marginTop: 16 }}>
+            <div className="toggle-row">
+              <label><input type="checkbox" name="screeningFmcg" defaultChecked /> FMCG experience required</label>
+              <label><input type="checkbox" name="screeningEducation" defaultChecked /> Education qualification required</label>
+            </div>
+          </div>
 
-              <button type="button" className="btn-primary" onClick={generateJD} disabled={generating}>
-                {generating ? "Generating... (40–50 sec)" : "Generate AI JD →"}
-              </button>
-              <p className="muted" style={{ marginTop: 6 }}>
-                Generates both the full JD and a short public advert. Takes 40–50 seconds.
-              </p>
+          <div className="field full" style={{ marginTop: 16 }}>
+            <label>Justification (why this role opened) *</label>
+            <textarea name="justification" rows={3} value={justification} onChange={(e) => setJustification(e.target.value)} required />
+          </div>
 
+          <div className="field full" style={{ marginTop: 12 }}>
+            <label>Job description</label>
+            <p className="muted" style={{ marginBottom: 6 }}>
+              Enter the role profile and personal profile. This is what reviewers will see and approve.
+            </p>
+            <textarea name="jdText" rows={8} value={jdText} onChange={(e) => setJdText(e.target.value)} />
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <label>AI advert template (optional)</label>
+            <p className="muted" style={{ marginBottom: 8 }}>
+              Upload the CBL Word template (.docx). The AI will keep the company introduction verbatim and fill in designation, location, role profile and personal profile from the details above.
+            </p>
+            <input
+              type="file"
+              accept=".docx"
+              onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+              style={{ marginBottom: 8 }}
+            />
+            {docFile && <p className="meta" style={{ marginTop: 4 }}>Loaded: {docFile.name}</p>}
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={generateAdvert}
+              disabled={generating}
+              style={{ marginTop: 12 }}
+            >
+              {generating ? "Generating advert... (40–50 sec)" : "✦ Generate AI advert →"}
+            </button>
+            {advertText && (
               <div className="field full" style={{ marginTop: 14 }}>
-                <label>Advert text</label>
-                <textarea name="advertText" rows={6} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
+                <label>AI Advert text (edit if needed)</label>
+                <textarea name="advertText" rows={8} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
               </div>
-
-              <div className="field full" style={{ marginTop: 12 }}>
-                <label>AI JD text</label>
-                <textarea name="jdText" rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)} />
-              </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="card">
@@ -314,9 +306,7 @@ export default function NewRequisitionPage() {
             onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
             style={{ marginTop: 8 }}
           />
-          {attachmentFile && (
-            <p className="meta" style={{ marginTop: 6 }}>Selected: {attachmentFile.name}</p>
-          )}
+          {attachmentFile && <p className="meta" style={{ marginTop: 6 }}>Selected: {attachmentFile.name}</p>}
         </div>
 
         <div className="card">
@@ -331,9 +321,7 @@ export default function NewRequisitionPage() {
                 <label>Reviewer {i + 1} email</label>
                 <input name="reviewerEmail" type="email" value={r.email} onChange={(e) => updateReviewer(i, "email", e.target.value)} required />
                 {reviewers.length > 1 && (
-                  <button type="button" className="btn-danger" onClick={() => removeReviewer(i)}>
-                    Remove
-                  </button>
+                  <button type="button" className="btn-danger" onClick={() => removeReviewer(i)}>Remove</button>
                 )}
               </div>
             </div>

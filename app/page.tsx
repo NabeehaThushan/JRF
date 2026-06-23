@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { Requisition, ReviewStep } from "@/lib/types";
 import AutoRefresh from "@/components/AutoRefresh";
+import DeleteRequisitionButton from "@/components/DeleteRequisitionButton";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -54,6 +55,7 @@ export default async function Dashboard() {
 
   return (
     <main className="container">
+      <AutoRefresh />
       <div className="topbar">
         <h1>Job requisition portal</h1>
         <Link href="/new" className="btn-primary" style={{ padding: "8px 14px" }}>
@@ -72,40 +74,42 @@ export default async function Dashboard() {
           const stage = currentStage(steps, r.status);
           const needsAction = r.status === "ta_revision" || r.status === "final_ta_review";
           return (
-            <Link
-              href={
-                r.status === "ta_revision"
-                  ? `/requisition/${r.id}/revise`
-                  : r.status === "final_ta_review"
-                  ? `/requisition/${r.id}/final-approve`
-                  : `/requisition/${r.id}`
-              }
-              key={r.id}
-              className="req-row-link"
-            >
-              <div className="req-row" style={needsAction ? { borderLeft: "4px solid #f5a623" } : {}}>
-                <div className="top">
-                  <div>
-                    <strong>{r.designation}</strong>
-                    <p className="muted" style={{margin: "2px 0 0"}}>{stage}</p>
-                    <p className="muted" style={{fontSize: 11, marginTop: 2}}>
-                      {new Date(r.updated_at).toLocaleString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </p>
+            <div key={r.id} style={{ position: "relative" }}>
+              <Link
+                href={
+                  r.status === "ta_revision"
+                    ? `/requisition/${r.id}/revise`
+                    : r.status === "final_ta_review"
+                    ? `/requisition/${r.id}/final-approve`
+                    : `/requisition/${r.id}`
+                }
+                className="req-row-link"
+              >
+                <div className="req-row" style={needsAction ? { borderLeft: "4px solid #f5a623" } : {}}>
+                  <div className="top" style={{paddingRight: 70}}>
+                    <div>
+                      <strong>{r.designation}</strong>
+                      <p className="muted" style={{margin: "2px 0 0"}}>{stage}</p>
+                      <p className="muted" style={{fontSize: 11, marginTop: 2}}>
+                        {new Date(r.updated_at).toLocaleString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    </div>
+                    <span className={`status-pill ${cls}`}>{label}</span>
                   </div>
-                  <span className={`status-pill ${cls}`}>{label}</span>
                 </div>
+              </Link>
+              <div style={{ position: "absolute", top: 12, right: 12 }}>
+                <DeleteRequisitionButton id={r.id} />
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
     </main>
   );
 }
-
-// force redeploy
