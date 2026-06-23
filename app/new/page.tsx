@@ -258,13 +258,6 @@ export default function NewRequisitionPage() {
             <textarea name="justification" rows={3} value={justification} onChange={(e) => setJustification(e.target.value)} required />
           </div>
 
-          <div className="field full" style={{ marginTop: 12 }}>
-            <label>Job description</label>
-            <p className="muted" style={{ marginBottom: 6 }}>
-              Enter the role profile and personal profile. This is what reviewers will see and approve.
-            </p>
-            <textarea name="jdText" rows={8} value={jdText} onChange={(e) => setJdText(e.target.value)} />
-          </div>
 
           <div style={{ marginTop: 20 }}>
             <label>AI advert template (optional)</label>

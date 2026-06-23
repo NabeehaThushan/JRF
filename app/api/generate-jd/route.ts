@@ -25,101 +25,79 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   }
 
+  // From form fields
   const roleTitle = body.role_title || "";
-  const location = body.location || "Pannipitiya";
+  const location = body.location || "";
   const company = body.company || "Ceylon Biscuits Limited";
-  const manualJd = body.tasks || "";
-  const mustHave = body.must_have || "";
+  const reason = body.reason || "";
 
-  // Extract just the company intro from the Word doc (everything before DESIGNATION:)
-  let companyIntro = "";
+  // Extract role profile and personal profile sections from the doc
+  let roleProfileSection = "";
+  let personalProfileSection = "";
+
   if (docText) {
-    const designationIndex = docText.toUpperCase().indexOf("DESIGNATION:");
-    if (designationIndex > 0) {
-      companyIntro = docText.substring(0, designationIndex).trim();
-    } else {
-      companyIntro = docText.trim();
+    const upper = docText.toUpperCase();
+    const roleIdx = upper.indexOf("ROLE PROFILE");
+    const personalIdx = upper.indexOf("PERSONAL PROFILE");
+    const clickIdx = upper.indexOf("CLICK HERE");
+
+    if (roleIdx > -1 && personalIdx > -1) {
+      roleProfileSection = docText.substring(roleIdx + "ROLE PROFILE".length, personalIdx).trim();
+      const endIdx = clickIdx > -1 ? clickIdx : docText.length;
+      personalProfileSection = docText.substring(personalIdx + "PERSONAL PROFILE".length, endIdx).trim();
     }
   }
 
-  // Build the advert prompt
-  const advertPrompt = companyIntro
-    ? `You are writing a job advertisement for ${company}. Follow these rules strictly:
-
-1. Start with this EXACT company introduction, word for word, do not change a single word, comma, or full stop:
-
-${companyIntro}
-
-2. Then add these lines exactly:
-DESIGNATION: ${roleTitle.toUpperCase()}
-COMPANY NAME: ${company.toUpperCase()}
-LOCATION: ${location.toUpperCase()}
-
-3. Then write ROLE PROFILE using dashes (-). Extract ALL key responsibilities from this job description — do not limit to 5, include every meaningful point:
-${manualJd}
-Make each bullet point specific and action-oriented. Do not copy verbatim — summarise into clear concise bullets. Minimum 5, no maximum.
-
-4. Then write PERSONAL PROFILE using dashes (-). Extract ALL requirements from the personal profile — do not limit to 5, include every meaningful qualification, skill and experience point:
-${mustHave}
-Always include education requirements, years of experience, technical skills, soft skills and any other relevant criteria mentioned. Minimum 5, no maximum.
-
-5. End with exactly these two lines:
-Click here to apply now!
-Apply within 7 days of this advert being published.
-
-Do not add any other sections. Do not add salary, conditions, team info, or screening questions. Output only the advert text, nothing else.`
-    : `Write a job advertisement for ${company} in this exact format:
-
-JOIN A TEAM DRIVEN BY EXCELLENCE
-[3 paragraph company introduction about CBL Group being Sri Lanka's largest food conglomerate, their brands including Munchee, Ritzbury, Revello, Tiara, Samaposha, and their values of caring, quality, innovation and integrity]
+  // Build advert prompt from extracted doc sections
+  const advertPrompt = docText
+    ? `You are writing a concise job advertisement. Output ONLY the following structure. Nothing before, nothing after. No company introduction. No click here to apply. No closing lines. No extra headings.
 
 DESIGNATION: ${roleTitle.toUpperCase()}
 COMPANY NAME: ${company.toUpperCase()}
 LOCATION: ${location.toUpperCase()}
 
 ROLE PROFILE
-[All key responsibilities as bullet points using dashes (-) based on: ${manualJd}. Include every meaningful point, minimum 5, no maximum limit.]
+Summarise the following into 5-6 tight bullet points using dashes (-). Keep the most important responsibilities, remove any redundancy:
+${roleProfileSection}
 
 PERSONAL PROFILE
-[All requirements as bullet points using dashes (-) based on: ${mustHave}. Include education, years of experience, technical skills, soft skills and any other relevant criteria. Minimum 5, no maximum limit.]
+Summarise the following into 5-6 tight bullet points using dashes (-). Keep the most important qualifications and skills, remove any redundancy:
+${personalProfileSection}
 
-Click here to apply now!
-Apply within 7 days of this advert being published.
+Stop immediately after the last PERSONAL PROFILE bullet. Output nothing else.`
+    : `You are writing a job advertisement. Output ONLY this structure:
 
-Output only the advert, no extra sections, no salary, no conditions.`;
+DESIGNATION: ${roleTitle.toUpperCase()}
+COMPANY NAME: ${company.toUpperCase()}
+LOCATION: ${location.toUpperCase()}
 
-  // Step 1 — generate main JD (for the full JD text)
-  const mainRes = await fetch(`${backendBase}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...body,
-      company_description: companyIntro
-        ? `Use this VERBATIM as the company introduction, do not change any words:\n\n${companyIntro}`
-        : "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
-    }),
-  });
+ROLE PROFILE
+- [Key responsibility 1]
+- [Key responsibility 2]
+- [Key responsibility 3]
+- [Key responsibility 4]
+- [Key responsibility 5]
 
-  let mainData: any = {};
-  if (mainRes.ok) {
-    mainData = await mainRes.json();
-  } else {
-    const text = await mainRes.text();
-    console.error("Railway JD error:", text);
-    return NextResponse.json({ error: text }, { status: 500 });
-  }
+PERSONAL PROFILE
+- [Education requirement]
+- [Years of experience]
+- [Technical skill]
+- [Soft skill]
+- [Other requirement]
 
-  // Step 2 — generate advert separately with strict prompt
+Stop immediately after the last PERSONAL PROFILE bullet. Do not add a NICE TO HAVE section. Do not add any section after PERSONAL PROFILE. Output nothing else.`;
+
+  // Generate advert
   const advertRes = await fetch(`${backendBase}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       role_title: roleTitle,
-      reason: body.reason || "Replacement hire",
+      reason: "Generate job advert only",
       tasks: advertPrompt,
-      must_have: mustHave,
+      must_have: personalProfileSection || "",
       company: company,
-      company_description: "Follow the instructions in the tasks field exactly. Output only the advert.",
+      company_description: "Follow the instructions in the tasks field exactly. Output only what is specified. Do not add any extra sections, headings, or content. Do not add click here to apply or any closing lines.",
     }),
   });
 
@@ -127,6 +105,37 @@ Output only the advert, no extra sections, no salary, no conditions.`;
   if (advertRes.ok) {
     const advertData = await advertRes.json();
     advertText = advertData.final_jd || "";
+  }
+
+  // Strip any unwanted sections the AI adds after PERSONAL PROFILE
+  if (advertText) {
+    const unwanted = ["NICE TO HAVE", "CLICK HERE", "APPLY WITHIN", "CONDITIONS", "THE TEAM"];
+    for (const phrase of unwanted) {
+      const idx = advertText.toUpperCase().indexOf(phrase);
+      if (idx > -1) {
+        advertText = advertText.substring(0, idx).trim();
+      }
+    }
+  }
+
+  // Also generate full JD for internal use
+  const mainRes = await fetch(`${backendBase}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      role_title: roleTitle,
+      reason: reason,
+      tasks: roleProfileSection || roleTitle,
+      must_have: personalProfileSection || "",
+      company: company,
+      company_description: "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
+      location: location,
+    }),
+  });
+
+  let mainData: any = {};
+  if (mainRes.ok) {
+    mainData = await mainRes.json();
   }
 
   return NextResponse.json({
