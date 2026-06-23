@@ -37,6 +37,7 @@ export default function NewRequisitionPage() {
   const [jdText, setJdText] = useState("");
   const [advertText, setAdvertText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [docFile, setDocFile] = useState<File | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [reviewers, setReviewers] = useState<Reviewer[]>([
     { name: "", email: "" },
@@ -54,28 +55,27 @@ export default function NewRequisitionPage() {
     }
     setGenerating(true);
     try {
-      const res = await fetch("/api/generate-jd", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role_title: designation,
-          reason: justification,
-          tasks: tasks,
-          must_have: mustHave,
-          salary: approvedBudget || "",
-          company: company || "Ceylon Biscuits Limited",
-          company_description: "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
-        }),
-      });
+      const fd = new FormData();
+      fd.append("role_title", designation);
+      fd.append("reason", justification);
+      fd.append("tasks", tasks);
+      fd.append("must_have", mustHave);
+      fd.append("salary", approvedBudget || "");
+      fd.append("company", company || "Ceylon Biscuits Limited");
+      fd.append("company_description", "CBL Group is a leading FMCG conglomerate in Sri Lanka.");
+      fd.append("location", location || "Pannipitiya");
+      if (docFile) fd.append("document", docFile);
+
+      const res = await fetch("/api/generate-jd", { method: "POST", body: fd });
       const data = await res.json();
       if (data.final_jd) {
         setJdText(data.final_jd);
-        if (data.parsed?.job_description) setAdvertText(data.parsed.job_description);
+        if (data.advert_text) setAdvertText(data.advert_text);
       } else {
-        alert("Generation failed. Check the backend is running.");
+        alert("Generation failed.");
       }
     } catch (e) {
-      alert("Generation failed. Check the backend is running.");
+      alert("Generation failed.");
     } finally {
       setGenerating(false);
     }
@@ -104,6 +104,7 @@ export default function NewRequisitionPage() {
     <main className="container">
       <h1>New requisition</h1>
       <form action={createRequisition}>
+
         <div className="card">
           <h2>Your details</h2>
           <div className="row">
@@ -133,6 +134,7 @@ export default function NewRequisitionPage() {
               <input name="designation" value={designation} onChange={(e) => setDesignation(e.target.value)} required />
             </div>
           </div>
+
           {vacancyReason === "resignation" && (
             <div className="row" style={{ marginBottom: 12 }}>
               <div>
@@ -153,6 +155,7 @@ export default function NewRequisitionPage() {
               </div>
             </div>
           )}
+
           <div className="row">
             <div>
               <label>RRF number</label>
@@ -160,21 +163,28 @@ export default function NewRequisitionPage() {
             </div>
             <div></div>
           </div>
+
           <div className="field full">
             <label>Justification (why this role opened) *</label>
             <textarea name="justification" rows={2} value={justification} onChange={(e) => setJustification(e.target.value)} required />
           </div>
           <div className="field full">
-            <label>Tasks &mdash; numbered list, 3 to 5 items *</label>
+            <label>Tasks — numbered list, 3 to 5 items *</label>
             <textarea name="tasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} required />
           </div>
           <div className="field full">
-            <label>Must-have requirements &mdash; numbered list, 3 to 5 items *</label>
+            <label>Must-have requirements — numbered list, 3 to 5 items *</label>
             <textarea name="mustHave" rows={3} value={mustHave} onChange={(e) => setMustHave(e.target.value)} required />
           </div>
           <div className="toggle-row">
-            <label><input type="checkbox" name="screeningFmcg" defaultChecked /> FMCG experience required</label>
-            <label><input type="checkbox" name="screeningEducation" defaultChecked /> Education qualification required</label>
+            <label>
+              <input type="checkbox" name="screeningFmcg" defaultChecked />
+              FMCG experience required
+            </label>
+            <label>
+              <input type="checkbox" name="screeningEducation" defaultChecked />
+              Education qualification required
+            </label>
           </div>
         </div>
 
@@ -183,7 +193,7 @@ export default function NewRequisitionPage() {
           <div className="row">
             <div>
               <label>Company for the recruitment</label>
-              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)} />
+              <input name="company" value={company} onChange={(e) => setCompany(e.target.value)}/>
             </div>
             <div></div>
           </div>
@@ -259,17 +269,36 @@ export default function NewRequisitionPage() {
             <button type="button" onClick={() => setShowJd(true)}>Add job description now</button>
           ) : (
             <>
-              <button type="button" className="btn-primary" onClick={generateJD} disabled={generating}>
-                {generating ? "Generating... (20-30 sec)" : "Generate AI JD →"}
-              </button>
-              <p className="muted">Calls the JD generator backend directly with the job details above.</p>
-              <div className="field full">
-                <label>JD text</label>
-                <textarea name="jdText" rows={8} value={jdText} onChange={(e) => setJdText(e.target.value)} />
+              <div className="field full" style={{ marginBottom: 14 }}>
+                <label>Upload reference document (optional)</label>
+                <p className="muted" style={{ marginBottom: 6 }}>
+                  Upload a Word doc (.docx) — AI will follow its structure and keep the company intro as-is.
+                </p>
+                <input
+                  type="file"
+                  accept=".docx"
+                  onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                />
+                {docFile && (
+                  <p className="meta" style={{ marginTop: 4 }}>Selected: {docFile.name}</p>
+                )}
               </div>
-              <div className="field full">
+
+              <button type="button" className="btn-primary" onClick={generateJD} disabled={generating}>
+                {generating ? "Generating... (40–50 sec)" : "Generate AI JD →"}
+              </button>
+              <p className="muted" style={{ marginTop: 6 }}>
+                Generates both the full JD and a short public advert. Takes 40–50 seconds.
+              </p>
+
+              <div className="field full" style={{ marginTop: 14 }}>
                 <label>Advert text</label>
-                <textarea name="advertText" rows={4} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
+                <textarea name="advertText" rows={6} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
+              </div>
+
+              <div className="field full" style={{ marginTop: 12 }}>
+                <label>AI JD text</label>
+                <textarea name="jdText" rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)} />
               </div>
             </>
           )}
@@ -302,7 +331,9 @@ export default function NewRequisitionPage() {
                 <label>Reviewer {i + 1} email</label>
                 <input name="reviewerEmail" type="email" value={r.email} onChange={(e) => updateReviewer(i, "email", e.target.value)} required />
                 {reviewers.length > 1 && (
-                  <button type="button" className="btn-danger" onClick={() => removeReviewer(i)}>Remove</button>
+                  <button type="button" className="btn-danger" onClick={() => removeReviewer(i)}>
+                    Remove
+                  </button>
                 )}
               </div>
             </div>

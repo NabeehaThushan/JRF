@@ -7,13 +7,27 @@ import { revalidatePath } from "next/cache";
 export async function submitReview(
   token: string,
   decision: "approved" | "rejected" | "needs_clarification",
-  comment: string
+  comment: string,
+  sections?: {
+    jd: "approved" | "rejected" | null;
+    advert: "approved" | "rejected" | null;
+    knockout: "approved" | "rejected" | null;
+    screening: "approved" | "rejected" | null;
+  }
 ) {
   const supabase = supabaseServer();
 
   const { data: step, error } = await supabase
     .from("review_steps")
-    .update({ status: decision, comment, acted_at: new Date().toISOString() })
+    .update({
+      status: decision,
+      comment,
+      acted_at: new Date().toISOString(),
+      section_jd: sections?.jd || null,
+      section_advert: sections?.advert || null,
+      section_knockout: sections?.knockout || null,
+      section_screening: sections?.screening || null,
+    })
     .eq("token", token)
     .select()
     .single();
@@ -37,19 +51,11 @@ export async function submitReview(
   if (!allSteps) throw new Error("Steps not found");
 
   if (decision === "rejected" || decision === "needs_clarification") {
-    await supabase
-      .from("requisitions")
-      .update({ status: "ta_revision", updated_at: new Date().toISOString() })
-      .eq("id", req.id);
-
+    await supabase.from("requisitions").update({ status: "ta_revision" }).eq("id", req.id);
     if (req.ta_email) {
       await sendTaRevisionEmail(
-        req.ta_email,
-        req.ta_name || "TA",
-        req.designation,
-        req.id,
-        step.reviewer_name,
-        comment,
+        req.ta_email, req.ta_name || "TA", req.designation,
+        req.id, step.reviewer_name, comment,
         decision === "needs_clarification" ? "Needs clarification" : "Rejected"
       );
     }
@@ -61,8 +67,10 @@ export async function submitReview(
 
   if (nextStep) {
     await sendReviewEmail(nextStep.reviewer_email, nextStep.reviewer_name, req.designation, nextStep.token);
-    await supabase.from("requisitions").update({ status: "in_review", updated_at: new Date().toISOString() }).eq("id", req.id);  } else {
-    await supabase.from("requisitions").update({ status: "final_ta_review", updated_at: new Date().toISOString() }).eq("id", req.id);    if (req.ta_email) {
+    await supabase.from("requisitions").update({ status: "in_review" }).eq("id", req.id);
+  } else {
+    await supabase.from("requisitions").update({ status: "final_ta_review" }).eq("id", req.id);
+    if (req.ta_email) {
       await sendFinalApprovalEmail(req.ta_email, req.ta_name || "TA", req.designation, req.id);
     }
   }

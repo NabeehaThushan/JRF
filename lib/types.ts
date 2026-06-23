@@ -13,6 +13,10 @@ export interface ReviewStep {
   comment: string | null;
   note_status: NoteStatus | null;
   acted_at: string | null;
+  section_jd: string | null;
+  section_advert: string | null;
+  section_knockout: string | null;
+  section_screening: string | null;
 }
 
 export interface Requisition {

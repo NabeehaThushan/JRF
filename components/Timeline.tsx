@@ -24,6 +24,26 @@ export default function Timeline({ steps }: { steps: ReviewStep[] }) {
             </span>
           </div>
           {s.comment && <p className="meta">&ldquo;{s.comment}&rdquo;</p>}
+
+          {/* ADD THIS BELOW THE COMMENT */}
+          {(s.section_jd || s.section_advert || s.section_knockout || s.section_screening) && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              {[
+                { label: "JD", val: s.section_jd },
+                { label: "Advert", val: s.section_advert },
+                { label: "Knockout", val: s.section_knockout },
+                { label: "Screening", val: s.section_screening },
+              ].map(({ label, val }) => val && (
+                <span key={label} style={{
+                  fontSize: 11, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+                  background: val === "approved" ? "#e3f8e9" : "#fdeaea",
+                  color: val === "approved" ? "#137a3d" : "#a33",
+                }}>
+                  {val === "approved" ? "✓" : "✕"} {label}
+                </span>
+              ))}
+            </div>
+          )}
           {s.status === "pending" && <CopyLinkButton token={s.token} />}
         </div>
       ))}

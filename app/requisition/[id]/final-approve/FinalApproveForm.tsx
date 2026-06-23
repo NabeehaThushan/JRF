@@ -9,10 +9,25 @@ export default function FinalApproveForm({
   steps,
 }: {
   requisitionId: string;
-  requisition: any;
-  steps: any[];
+  requisition: {
+    jd_text: string | null;
+    advert_text: string | null;
+    designation: string;
+    justification: string;
+    tasks: string;
+    must_have: string;
+    approved_budget: string | null;
+    screening_fmcg: boolean;
+    screening_education: boolean;
+  };
+  steps: {
+    id: string;
+    stage_order: number;
+    reviewer_name: string;
+    status: string;
+    comment: string | null;
+  }[];
 }) {
-  const [result, setResult] = useState<any>(null);
   const [jdText, setJdText] = useState(requisition.jd_text || "");
   const [advertText, setAdvertText] = useState(requisition.advert_text || "");
   const [generating, setGenerating] = useState(false);
@@ -26,32 +41,29 @@ export default function FinalApproveForm({
   async function generateJD() {
     setGenerating(true);
     try {
-      const enrichedTasks =
-        requisition.tasks + (reviewerNotes ? `\n\nReviewer feedback to incorporate:\n${reviewerNotes}` : "");
+      const enrichedTasks = requisition.tasks +
+        (reviewerNotes ? `\n\nReviewer feedback to incorporate:\n${reviewerNotes}` : "");
 
-      const res = await fetch("/api/generate-jd", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role_title: requisition.designation,
-          reason: requisition.justification,
-          tasks: enrichedTasks,
-          must_have: requisition.must_have,
-          salary: requisition.approved_budget || "",
-          company: requisition.company || "Ceylon Biscuits Limited",
-          company_description: "CBL Group is a leading FMCG conglomerate in Sri Lanka.",
-        }),
-      });
+      const fd = new FormData();
+      fd.append("role_title", requisition.designation);
+      fd.append("reason", requisition.justification);
+      fd.append("tasks", enrichedTasks);
+      fd.append("must_have", requisition.must_have);
+      fd.append("salary", requisition.approved_budget || "");
+      fd.append("company", "Ceylon Biscuits Limited");
+      fd.append("company_description", "CBL Group is a leading FMCG conglomerate in Sri Lanka.");
+      fd.append("location", "Pannipitiya");
+      fd.append("knockout_filters", [
+        requisition.screening_fmcg ? "Do you have FMCG experience?" : "",
+        requisition.screening_education ? "Do you meet the education requirements?" : "",
+      ].filter(Boolean).join("\n"));
+
+      const res = await fetch("/api/generate-jd", { method: "POST", body: fd });
       const data = await res.json();
-      if (data.final_jd) {
-        setResult(data);
-        setJdText(data.final_jd);
-        if (data.parsed?.job_description) setAdvertText(data.parsed.job_description);
-      } else {
-        alert("Generation failed. Check the backend is running.");
-      }
+      if (data.final_jd) setJdText(data.final_jd);
+      if (data.advert_text) setAdvertText(data.advert_text);
     } catch (e) {
-      alert("Generation failed. Check the backend is running.");
+      alert("Generation failed.");
     } finally {
       setGenerating(false);
     }
@@ -59,7 +71,7 @@ export default function FinalApproveForm({
 
   async function handle() {
     setPending(true);
-    await finalApprove(requisitionId, jdText, advertText, result);
+    await finalApprove(requisitionId, jdText, advertText);
   }
 
   return (
@@ -82,75 +94,50 @@ export default function FinalApproveForm({
       <div className="card">
         <h2>Generate final JD</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Generates directly from the backend, using every reviewer's comments. The full result gets
-          saved permanently the moment you publish — nothing is lost afterward.
+          Uses all original job details plus every reviewer comment. Generates both the full JD and public advert. Takes 40–50 seconds.
         </p>
-        <button className="btn-primary" onClick={generateJD} disabled={generating} type="button">
-          {generating ? "Generating... (20-30 sec)" : "✦ Generate JD from all feedback →"}
+        <button
+          className="btn-primary"
+          onClick={generateJD}
+          disabled={generating}
+          type="button"
+        >
+          {generating ? "Generating... (40–50 sec)" : "✦ Generate JD from all feedback →"}
         </button>
       </div>
 
-      {result && (
-        <>
-          <div className="card">
-            <h2>Job description</h2>
-            <div className="field full">
-              <label>JD text (edit if needed)</label>
-              <textarea rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)} />
-            </div>
-            <div className="field full" style={{ marginTop: 12 }}>
-              <label>Advert text (edit if needed)</label>
-              <textarea rows={4} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
-            </div>
+      {(jdText || advertText) && (
+        <div className="card">
+          <h2>Final advert text — review and edit</h2>
+          <div className="field full">
+            <label>Advert text</label>
+            <textarea
+              rows={8}
+              value={advertText}
+              onChange={(e) => setAdvertText(e.target.value)}
+            />
           </div>
 
-          {(result.parsed?.skills || result.parsed?.tags) && (
-            <div className="card">
-              <h2>Skills and tags</h2>
-              {result.parsed?.skills && <p className="meta"><strong>Skills:</strong> {result.parsed.skills}</p>}
-              {result.parsed?.tags && <p className="meta"><strong>Tags:</strong> {result.parsed.tags}</p>}
-            </div>
-          )}
-
-          {(result.parsed?.knockout_filters || result.parsed?.screening_questions) && (
-            <div className="card">
-              <h2>Screening</h2>
-              {result.parsed?.knockout_filters && (
-                <p className="meta"><strong>Knockout filters:</strong> {result.parsed.knockout_filters}</p>
-              )}
-              {result.parsed?.screening_questions && (
-                <p className="meta"><strong>Pre-screening questions:</strong> {result.parsed.screening_questions}</p>
-              )}
-            </div>
-          )}
-
-          {result.best_fit && (
-            <div className="card">
-              <h2>Best-fit candidate profile</h2>
-              {result.best_fit.summary && <p className="meta">{result.best_fit.summary}</p>}
-              {result.best_fit.years_experience_min !== undefined && (
-                <p className="meta">
-                  <strong>Experience:</strong> {result.best_fit.years_experience_min}–{result.best_fit.years_experience_max} years
-                </p>
-              )}
-              {result.best_fit.ideal_titles?.length > 0 && (
-                <p className="meta"><strong>Likely previous titles:</strong> {result.best_fit.ideal_titles.join(", ")}</p>
-              )}
-              {result.best_fit.must_have_keywords?.length > 0 && (
-                <p className="meta"><strong>Strong resume keywords:</strong> {result.best_fit.must_have_keywords.join(", ")}</p>
-              )}
-              {result.best_fit.red_flag_keywords?.length > 0 && (
-                <p className="meta"><strong>Watch-out signals:</strong> {result.best_fit.red_flag_keywords.join(", ")}</p>
-              )}
-            </div>
-          )}
-
-          <div className="card">
-            <button className="btn-primary" disabled={pending} onClick={handle} type="button">
-              ✓ Approve and publish
-            </button>
+          <h2 style={{ marginTop: 16 }}>Full JD — review and edit</h2>
+          <div className="field full">
+            <label>AI JD text</label>
+            <textarea
+              rows={14}
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+            />
           </div>
-        </>
+
+          <button
+            className="btn-primary"
+            disabled={pending}
+            onClick={handle}
+            style={{ marginTop: 12 }}
+            type="button"
+          >
+            ✓ Approve and publish
+          </button>
+        </div>
       )}
     </div>
   );

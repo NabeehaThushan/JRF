@@ -8,7 +8,7 @@ export async function finalApprove(
   requisitionId: string,
   jdText: string,
   advertText: string,
-  fullResult: any
+  //fullResult: any
 ) {
   const supabase = supabaseServer();
   await supabase
@@ -17,7 +17,7 @@ export async function finalApprove(
       status: "ready_to_publish",
       jd_text: jdText,
       advert_text: advertText,
-      final_jd_full: fullResult,
+      //final_jd_full: fullResult,
       updated_at: new Date().toISOString(),
     })
     .eq("id", requisitionId);
