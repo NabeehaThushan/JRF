@@ -57,14 +57,14 @@ COMPANY NAME: ${company.toUpperCase()}
 LOCATION: ${location.toUpperCase()}
 
 ROLE PROFILE
-Summarise the following into 5-6 tight bullet points using dashes (-). Keep the most important responsibilities, remove any redundancy:
+Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. Every line must start with •. You MUST write at least 5 bullets. Keep the most important responsibilities. If the source has fewer than 5 distinct points, expand slightly but stay relevant:
 ${roleProfileSection}
 
 PERSONAL PROFILE
-Summarise the following into 5-6 tight bullet points using dashes (-). Keep the most important qualifications and skills, remove any redundancy:
+Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. Every line must start with •. You MUST write at least 5 bullets. Keep the most important qualifications and skills. If the source has fewer than 5 distinct points, expand slightly but stay relevant:
 ${personalProfileSection}
 
-Stop immediately after the last PERSONAL PROFILE bullet. Output nothing else.`
+Stop immediately after the last PERSONAL PROFILE bullet. Do not add a NICE TO HAVE section. Do not add any section after PERSONAL PROFILE. Output nothing else.`
     : `You are writing a job advertisement. Output ONLY this structure:
 
 DESIGNATION: ${roleTitle.toUpperCase()}
