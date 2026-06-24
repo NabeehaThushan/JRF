@@ -36,6 +36,7 @@ export default function NewRequisitionPage() {
   const [generating, setGenerating] = useState(false);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [customPrompt, setCustomPrompt] = useState("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([
     { name: "", email: "" },
     { name: "", email: "" },
@@ -62,13 +63,13 @@ export default function NewRequisitionPage() {
       const fd = new FormData();
       fd.append("role_title", designation);
       fd.append("reason", justification);
-      fd.append("tasks", jdText || "See job description above");
-      fd.append("must_have", "See job description above");
+      fd.append("tasks", jdText || "");
+      fd.append("must_have", "");
       fd.append("salary", approvedBudget || "");
       fd.append("company", company || "Ceylon Biscuits Limited");
       fd.append("location", location || "Pannipitiya");
-      fd.append("company_description", "CBL Group is a leading FMCG conglomerate in Sri Lanka.");
       if (docFile) fd.append("document", docFile);
+      if (customPrompt) fd.append("custom_prompt", customPrompt);
 
       const res = await fetch("/api/generate-jd", { method: "POST", body: fd });
       const data = await res.json();
@@ -258,11 +259,10 @@ export default function NewRequisitionPage() {
             <textarea name="justification" rows={3} value={justification} onChange={(e) => setJustification(e.target.value)} required />
           </div>
 
-
           <div style={{ marginTop: 20 }}>
-            <label>AI advert template (optional)</label>
+            <label>AI advert template</label>
             <p className="muted" style={{ marginBottom: 8 }}>
-              Upload the CBL Word template (.docx). The AI will keep the company introduction verbatim and fill in designation, location, role profile and personal profile from the details above.
+              Upload the CBL Word document (.docx) for this role. The AI will extract the role profile and personal profile and summarise into a clean advert.
             </p>
             <input
               type="file"
@@ -271,18 +271,33 @@ export default function NewRequisitionPage() {
               style={{ marginBottom: 8 }}
             />
             {docFile && <p className="meta" style={{ marginTop: 4 }}>Loaded: {docFile.name}</p>}
+
+            <div className="field full" style={{ marginTop: 12, marginBottom: 12 }}>
+              <label>Custom prompt (optional)</label>
+              <p className="muted" style={{ marginBottom: 6 }}>
+                Add specific instructions for the AI. If left blank the default prompt is used.
+              </p>
+              <textarea
+                rows={4}
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="e.g. Focus on digital marketing experience, include 6-8 bullets, tone should be professional and employer-brand friendly..."
+              />
+            </div>
+
             <button
               type="button"
               className="btn-primary"
               onClick={generateAdvert}
               disabled={generating}
-              style={{ marginTop: 12 }}
+              style={{ marginTop: 4 }}
             >
-              {generating ? "Generating advert... (40–50 sec)" : "✦ Generate AI advert →"}
+              {generating ? "Generating advert... (20–30 sec)" : "✦ Generate AI advert →"}
             </button>
+
             {advertText && (
               <div className="field full" style={{ marginTop: 14 }}>
-                <label>AI Advert text (edit if needed)</label>
+                <label>AI advert text (edit if needed)</label>
                 <textarea name="advertText" rows={8} value={advertText} onChange={(e) => setAdvertText(e.target.value)} />
               </div>
             )}
