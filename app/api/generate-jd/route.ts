@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 const advertPrompt = customPrompt
     ? `${customPrompt}
 
-CRITICAL RULE: The PERSONAL PROFILE bullets must preserve every specific fact present in the source content below — exact years of experience (e.g. "2-3 years"), exact degree or qualification names, exact tool/platform names. Do not paraphrase these into vague language. If a number or qualification appears in the source, it MUST appear in your output bullets, word for word where possible.
+CRITICAL RULE: The PERSONAL PROFILE bullets must preserve every specific fact present in the source content below — exact years of experience (e.g. "2-3 years"), exact degree or qualification names, exact tool/platform names.If a number or qualification appears in the source, it MUST appear in your output bullets, word for word where possible.do not extract same wording, summarise it to add to an advert.
 
 DESIGNATION: ${roleTitle.toUpperCase()}
 COMPANY NAME: ${company.toUpperCase()}
@@ -87,7 +87,7 @@ LOCATION: ${location.toUpperCase()}
 ROLE PROFILE source content:
 ${roleProfileSection || "Not provided"}
 
-PERSONAL PROFILE source content (extract every fact, especially years of experience and education/qualifications):
+PERSONAL PROFILE source content (extract every fact, especially years of experience and education/qualifications, do not extract same wording, summarise it to add to an advert):
 ${personalProfileSection || "Not provided"}
 
 Output format must be:
