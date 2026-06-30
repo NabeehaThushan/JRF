@@ -75,20 +75,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Build advert prompt
-  const advertPrompt = customPrompt
+const advertPrompt = customPrompt
     ? `${customPrompt}
 
-Use the following details:
+CRITICAL RULE: The PERSONAL PROFILE bullets must preserve every specific fact present in the source content below — exact years of experience (e.g. "2-3 years"), exact degree or qualification names, exact tool/platform names. Do not paraphrase these into vague language. If a number or qualification appears in the source, it MUST appear in your output bullets, word for word where possible.
+
 DESIGNATION: ${roleTitle.toUpperCase()}
 COMPANY NAME: ${company.toUpperCase()}
 LOCATION: ${location.toUpperCase()}
 
-ROLE PROFILE content to use:
-${roleProfileSection}
+ROLE PROFILE source content:
+${roleProfileSection || "Not provided"}
 
-PERSONAL PROFILE content to use:
-${personalProfileSection}
+PERSONAL PROFILE source content (extract every fact, especially years of experience and education/qualifications):
+${personalProfileSection || "Not provided"}
 
 Output format must be:
 DESIGNATION: ${roleTitle.toUpperCase()}
@@ -100,7 +100,8 @@ ROLE PROFILE
 - [bullet]
 
 PERSONAL PROFILE
-- [bullet]
+- [bullet — must include years of experience if present in source]
+- [bullet — must include education/qualification if present in source]
 - [bullet]
 
 Stop after PERSONAL PROFILE. No NICE TO HAVE. No click here to apply. No extra sections.`
@@ -111,14 +112,14 @@ COMPANY NAME: ${company.toUpperCase()}
 LOCATION: ${location.toUpperCase()}
 
 ROLE PROFILE
-Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. Every line must start with •. You MUST write at least 5 bullets. Keep the most important responsibilities:
+Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. Keep the most important responsibilities, preserving any specific tools, platforms or metrics mentioned:
 ${roleProfileSection || reason}
 
 PERSONAL PROFILE
-Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. Every line must start with •. You MUST write at least 5 bullets. Keep the most important qualifications and skills:
+Summarise the following into EXACTLY 5 to 6 bullet points. You MUST use a bullet point (•) at the start of every single line. CRITICAL: you must preserve exact years of experience and exact education/qualification names if they appear in the source — do not generalize or drop them:
 ${personalProfileSection}
 
-Stop immediately after the last PERSONAL PROFILE bullet. Do not add a NICE TO HAVE section. Do not add any section after PERSONAL PROFILE. Output nothing else.`;
+Stop immediately after the last PERSONAL PROFILE bullet. Do not add a NICE TO HAVE section. Output nothing else.`;
 
   // Generate advert
   let advertText = "";
